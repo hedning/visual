@@ -114,6 +114,10 @@
   `(defun ,name ()
      (interactive)
      (let ((continue (memq (point) visual--selection)))
+       (when continue
+         (goto-char (if ,back
+                        (plist-get visual--selection :beg)
+                      (plist-get visual--selection :end))))
        (let* ((range (,func ,back))
               (beg (plist-get range :beg))
               (end (plist-get range :end)))
