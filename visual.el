@@ -129,6 +129,16 @@
   (goto-char (plist-get visual--selection :beg))
   (set-mark (plist-get visual--selection :end)))
 
+(defun visual-exchange-end-and-beg ()
+  (interactive)
+  (when (memq (point) visual--selection)
+    (let ((beg (plist-get visual--selection :beg))
+          (end (plist-get visual--selection :end)))
+      (if (eq (point) beg)
+          (goto-char end)
+        (goto-char beg))
+      (visual-overlay-range visual--selection))))
+
 (defun visual-exit-state ()
   (interactive)
   (hlt-unhighlight-region))
