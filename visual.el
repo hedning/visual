@@ -101,6 +101,7 @@
 
 (defvar visual--selection nil
   "")
+(make-variable-buffer-local 'visual--selection)
 
 (defmacro make-sp-visual (name func back)
   `(defun ,name ()
