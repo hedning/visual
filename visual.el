@@ -103,6 +103,16 @@
   "")
 (make-variable-buffer-local 'visual--selection)
 
+(defun visual-overlay-range (range &optional back shift)
+  (when range
+    (let ((beg (plist-get range :beg))
+          (end (plist-get range :end))))
+    (goto-char (if ,back beg end))
+    (setq visual--selection range)
+    (hlt-unhighlight-region)
+    (hlt-highlight-region beg end 'region)
+    range))
+
 (defmacro make-sp-visual (name func back)
   `(defun ,name ()
      (interactive)
