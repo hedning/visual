@@ -135,22 +135,7 @@
 
 (add-hook 'evil-lisp-state-exit-hook 'visual-exit-state)
 
-;; (defun visual-next ()
-;;   (interactive)
-;;   )
 
-;; (defun visual-previous ()
-;;   (interactive)
-;;   )
-
-;; (defun visual-up ()
-;;   (interactive)
-;;   )
-
-;; (defun visual-down ()
-;;   (interactive)
-;;   (sp-get-enclosing-sexp)
-;;   )
 
 (make-sp-visual visual-forward-symbol sp-get-symbol nil nil)
 (make-sp-visual visual-backward-symbol sp-get-symbol 1 nil)
@@ -201,14 +186,6 @@
       (eval `(progn
               (define-key evil-lisp-state-map ,(kbd key)
                 (evil-lisp-state-enter-command ,cmd)))))))
-
-;; (define-key evil-lisp-state-map "l" 'visual-forward-sexp)
-;; (define-key evil-lisp-state-map "h" 'visual-backward-sexp)
-;; (define-key evil-lisp-state-map "L" 'visual-forward-symbol)
-;; (define-key evil-lisp-state-map "H" 'visual-backward-symbol)
-;; (define-key evil-lisp-state-map "v" 'visual-select-overlay)
-;; (define-key evil-lisp-state-map "k" 'visual-up)
-;; (define-key evil-lisp-state-map "j" 'visual-down)
 
 (define-key evil-lisp-state-map (kbd dotspacemacs-leader-key) spacemacs-default-map)
 (define-key evil-lisp-state-map (kbd dotspacemacs-major-mode-leader-key)
