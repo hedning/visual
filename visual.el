@@ -113,20 +113,32 @@
 (defmacro make-sp-visual (name func back shift)
   `(defun ,name ()
      (interactive)
-     (let ((continue (memq (point) visual--selection)))
-       (when continue
+     ;; (evil-lisp-state-p) doesn't work
+     ;; because we've already entered evil-lisp-state
+     (let* ((old-beg (plist-get visual--selection :beg))
+            (old-end (plist-get visual--selection :end))
+            (at-beg (eq (point) old-beg))
+            (at-end (eq (point) old-end))
+            (continue (or at-beg at-end)))
+       (when (and continue (not ,shift))
          (goto-char (if ,back
                         (plist-get visual--selection :beg)
                       (plist-get visual--selection :end))))
-       (let* ((range (,func ,back))
-              (beg (plist-get range :beg))
-              (end (plist-get range :end)))
-         (goto-char (if ,back beg end))
-         (if (and ,shift continue)
-             (plist-put range (if ,back :end :beg)
-                        (if ,back
-                            (plist-get visual--selection :end)
-                          (plist-get visual--selection :beg))))
+       (let* ((range (,func ,back)) beg end)
+         (when (and ,shift continue)
+           ;; If needed run the motion again so we know we've found another thing
+           (when (or (and at-end ,back) (and at-beg (not ,back)))
+             (goto-char (plist-get range (if at-beg :end :beg)))
+             (setq range (,func ,back)))
+           (setq  beg (plist-get range :beg)
+                  end (plist-get range :end))
+           (plist-put range :beg (if at-end old-beg beg))
+           (plist-put range :end (if at-beg old-end end)))
+         (setq beg (plist-get range :beg)
+               end (plist-get range :end))
+         (if ,shift
+             (goto-char (if at-beg beg end))
+           (goto-char (if ,back beg end)))
          (setq visual--selection range)
          (visual-overlay-range range)))))
 
