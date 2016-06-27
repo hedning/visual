@@ -208,6 +208,8 @@
 (define-key evil-lisp-state-map (kbd dotspacemacs-major-mode-leader-key)
   (lambda () (interactive) (symbol-value (intern (format "spacemacs-%s-map" major-mode)))))
 
+(setq evil-lisp-state-cursor (list "HotPink1" 'bar))
+
 ;; (define-key evil-lisp-state-map (kbd "SPC") 'visual-select-overlay)
 
 (defun select-symbol ()
