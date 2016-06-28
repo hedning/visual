@@ -132,8 +132,8 @@
              (setq range (,func ,back)))
            (setq  beg (plist-get range :beg)
                   end (plist-get range :end))
-           (plist-put range :beg (if at-end old-beg beg))
-           (plist-put range :end (if at-beg old-end end)))
+           (plist-put range :beg (if at-end (min old-beg beg) beg))
+           (plist-put range :end (if at-beg (max old-end end) end)))
          (setq beg (plist-get range :beg)
                end (plist-get range :end))
          (if ,shift
