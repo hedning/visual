@@ -119,7 +119,7 @@
             (old-end (plist-get visual--selection :end))
             (at-beg (eq (point) old-beg))
             (at-end (eq (point) old-end))
-            (continue (or at-beg at-end)))
+            (continue (and (evil-lisp-state-p) visual--selection)))
        (when (and continue (not ,shift))
          (goto-char (if ,back
                         (plist-get visual--selection :beg)
@@ -129,7 +129,8 @@
              (visual-overlay-range visual--selection)
            (when (and ,shift continue)
              ;; If needed run the motion again so we know we've found another thing
-             (when (or (and at-end ,back) (and at-beg (not ,back)))
+             (when (or (and at-end ,back)
+                       (and at-beg (not ,back)))
                (goto-char (plist-get range (if at-beg :end :beg)))
                (setq range (,func ,back)))
              (setq  beg (plist-get range :beg)
@@ -142,6 +143,7 @@
                (goto-char (if at-beg beg end))
              (goto-char (if ,back beg end)))
            (setq visual--selection range)
+           (hlt-unhighlight-region)
            (visual-overlay-range range))))))
 
 (defun visual-select-overlay ()
@@ -156,11 +158,11 @@
           (end (plist-get visual--selection :end)))
       (if (eq (point) beg)
           (goto-char end)
-        (goto-char beg))
-      (visual-overlay-range visual--selection))))
+        (goto-char beg)))))
 
 (defun visual-exit-state ()
   (interactive)
+  (setq visual--selection nil)
   (hlt-unhighlight-region))
 
 (add-hook 'evil-lisp-state-exit-hook 'visual-exit-state)
@@ -200,6 +202,21 @@
   (interactive)
   )
 
+(defmacro visual-lisp-state-enter-command (command)
+  "Wrap COMMAND to call evil-lisp-state before executing COMMAND."
+  (let ((funcname (if (string-match "lisp-state-"
+                                    (symbol-name command))
+                      (intern (format "evil-%s" command))
+                    (intern (format "evil-lisp-state-%s" command)))))
+    `(progn
+       (defun ,funcname ()
+         (interactive)
+         (call-interactively ',command)
+         (when (and (not (evil-lisp-state-p))
+                    evil-lisp-state-enter-lisp-state-on-command)
+           (evil-lisp-state)))
+       ',funcname)))
+
 (let ((bindings
        '(("l" . visual-forward-sexp)
          ("h" . visual-backward-sexp)
@@ -216,7 +233,7 @@
       (message "cmd: %s" cmd)
       (eval `(progn
               (define-key evil-lisp-state-map ,(kbd key)
-                (evil-lisp-state-enter-command ,cmd)))))))
+                (visual-lisp-state-enter-command ,cmd)))))))
 
 (define-key evil-lisp-state-map (kbd dotspacemacs-leader-key) spacemacs-default-map)
 (define-key evil-lisp-state-map (kbd dotspacemacs-major-mode-leader-key)
