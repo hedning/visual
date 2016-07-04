@@ -202,6 +202,22 @@
   (interactive)
   )
 
+(defun visual-raise ()
+  (interactive)
+  (let* ((start (plist-get visual--selection :beg))
+         (end (plist-get visual--selection :end))
+         (text (buffer-substring start end))
+         (enclosing (sp-get-enclosing-sexp))
+         (enc-start (plist-get enclosing :beg))
+         (enc-end (plist-get enclosing :end)))
+    (when enclosing
+      (delete-region enc-start enc-end)
+      ;; Record point before we insert
+      (plist-put visual--selection :beg (point))
+      (insert text)
+      (plist-put visual--selection :end (point))
+      (visual-overlay-range visual--selection))))
+
 (defmacro visual-lisp-state-enter-command (command)
   "Wrap COMMAND to call evil-lisp-state before executing COMMAND."
   (let ((funcname (if (string-match "lisp-state-"
@@ -226,6 +242,7 @@
          ("H" . visual-backward-shift-sexp)
          ("L" . visual-forward-shift-sexp)
          ("v" . visual-select-overlay)
+         ("r" . visual-raise)
          ("o" . visual-exchange-end-and-beg))))
   (dolist (x bindings)
     (let ((key (car x))
