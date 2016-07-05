@@ -99,9 +99,21 @@
 
 ;; (defun visual-backward-symbol (&optional arg))
 
-(defvar visual--selection nil
-  "")
-(make-variable-buffer-local 'visual--selection)
+(defvar visual--overlay nil
+  "The current overlay used by visual-lisp-state")
+(make-variable-buffer-local 'visual--overlay)
+
+(defun visual-make-highlighted-overlay (start end)
+  (let ((overlay (make-overlay start end)))
+    (overlay-put overlay 'face 'region)
+    overlay))
+
+(defun visual-highlight-overlay (overlay)
+  (overlay-put overlay 'face 'region)
+  overlay)
+(defun visual-unhighlight-overlay (overlay)
+  (overlay-put overlay 'face nil)
+  overlay)
 
 (defun visual-overlay-range (range)
   (when range
@@ -110,23 +122,29 @@
       (hlt-highlight-region beg end 'region)
       range)))
 
+;; Need to check if the char is equal to any openers
+(defun visual-overlay-open ()
+  (char-to-string (char-after (overlay-start visual--overlay))))
+
+(defun visual-overlay-close ()
+  (char-to-string (char-before (overlay-start visual--overlay))))
+
 (defmacro make-sp-visual (name func back shift)
   `(defun ,name ()
      (interactive)
      ;; (evil-lisp-state-p) doesn't work
      ;; because we've already entered evil-lisp-state
-     (let* ((old-beg (plist-get visual--selection :beg))
-            (old-end (plist-get visual--selection :end))
+     (let* ((old-beg (overlay-start visual--overlay))
+            (old-end (overlay-end visual--overlay))
             (at-beg (eq (point) old-beg))
             (at-end (eq (point) old-end))
-            (continue (and (evil-lisp-state-p) visual--selection)))
+            (continue (evil-lisp-state-p)))
        (when (and continue (not ,shift))
          (goto-char (if ,back
-                        (plist-get visual--selection :beg)
-                      (plist-get visual--selection :end))))
+                        old-beg
+                      old-end)))
        (let* ((range (,func ,back)) beg end)
-         (if (not range)
-             (visual-overlay-range visual--selection)
+         (when range
            (when (and ,shift continue)
              ;; If needed run the motion again so we know we've found another thing
              (when (or (and at-end ,back)
@@ -142,33 +160,32 @@
            (if ,shift
                (goto-char (if at-beg beg end))
              (goto-char (if ,back beg end)))
-           (setq visual--selection range)
-           (hlt-unhighlight-region)
-           (visual-overlay-range range))))))
+           (move-overlay visual--overlay beg end))))))
 
 (defun visual-select-overlay ()
   (interactive)
-  (goto-char (plist-get visual--selection :beg))
-  (set-mark (plist-get visual--selection :end)))
+  (goto-char (overlay-start visual--overlay))
+  (set-mark (overlay-end visual--overlay)))
 
 (defun visual-exchange-end-and-beg ()
   (interactive)
-  (when (memq (point) visual--selection)
-    (let ((beg (plist-get visual--selection :beg))
-          (end (plist-get visual--selection :end)))
-      (if (eq (point) beg)
-          (goto-char end)
-        (goto-char beg)))))
+  (let ((beg (overlay-start visual--overlay))
+        (end (overlay-end visual--overlay)))
+    (when (memq (point) (list beg end))
+      (goto-char (if (eq (point) beg) end beg)))))
 
 (defun visual-exit-state ()
   (interactive)
-  (setq visual--selection nil)
+  (visual-unhighlight-overlay visual--overlay)
   (hlt-unhighlight-region))
 
+(defun visual-entry-state ()
+  (visual-highlight-overlay visual--overlay))
+
+
+
 (add-hook 'evil-lisp-state-exit-hook 'visual-exit-state)
-
-
-
+(add-hook 'evil-lisp-state-entry-hook 'visual-entry-state)
 (make-sp-visual visual-forward-symbol sp-get-symbol nil nil)
 (make-sp-visual visual-backward-symbol sp-get-symbol 1 nil)
 (make-sp-visual visual-forward-sexp sp-get-thing nil nil)
@@ -181,17 +198,17 @@
   (interactive)
   (let (range beg end)
     (save-excursion
-      (when (equal (plist-get visual--selection :op) "(")
-        (goto-char (plist-get visual--selection (if back :end :beg)))
+      (when (equal (visual-overlay-open) "(")
+        (goto-char (if back
+                       (overlay-end visual--overlay)
+                     (overlay-start visual--overlay)))
         (if back (backward-char) (forward-char)))
       (setq range (sp-get-thing back)
             beg (plist-get range :beg)
             end (plist-get range :end)))
     (when range
       (goto-char (if back beg end))
-      (setq visual--selection range)
-      (hlt-unhighlight-region)
-      (hlt-highlight-region beg end 'region))
+      (move-overlay visual--overlay beg end))
     range))
 
 (defun visual-down-end ()
@@ -204,8 +221,8 @@
 
 (defun visual-raise ()
   (interactive)
-  (let* ((start (plist-get visual--selection :beg))
-         (end (plist-get visual--selection :end))
+  (let* ((start (overlay-start visual--overlay))
+         (end (overlay-end visual--overlay))
          (text (buffer-substring start end))
          (enclosing (sp-get-enclosing-sexp))
          (enc-start (plist-get enclosing :beg))
@@ -213,10 +230,9 @@
     (when enclosing
       (delete-region enc-start enc-end)
       ;; Record point before we insert
-      (plist-put visual--selection :beg (point))
+      (setq start (point))
       (insert text)
-      (plist-put visual--selection :end (point))
-      (visual-overlay-range visual--selection))))
+      (move-overlay visual--overlay start (point)))))
 
 (defmacro visual-lisp-state-enter-command (command)
   "Wrap COMMAND to call evil-lisp-state before executing COMMAND."
@@ -227,6 +243,8 @@
     `(progn
        (defun ,funcname ()
          (interactive)
+         (unless visual--overlay
+           (setq visual--overlay (make-overlay 1 1)))
          (call-interactively ',command)
          (when (and (not (evil-lisp-state-p))
                     evil-lisp-state-enter-lisp-state-on-command)
