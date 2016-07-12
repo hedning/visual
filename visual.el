@@ -191,11 +191,11 @@
     (goto-char (overlay-end visual--overlay))))
 
 (defun visual-exchange-end-and-beg ()
+  "Toggle point between stard and end of the current thing"
   (interactive)
-  (let ((beg (overlay-start visual--overlay))
-        (end (overlay-end visual--overlay)))
-    (when (memq (point) (list beg end))
-      (goto-char (if (eq (point) beg) end beg)))))
+  (when (visual-at-overlay)
+    (cond ((visual-at-start) (visual-goto-end))
+          ((visual-at-end) (visual-goto-start)))))
 
 (defun visual-exit-state ()
   (interactive)
