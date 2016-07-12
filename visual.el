@@ -129,6 +129,21 @@
 (defun visual-overlay-close ()
   (char-to-string (char-before (overlay-start visual--overlay))))
 
+(defun visual-at-sexp ()
+  (or (equal "(" (visual-overlay-open))
+      (equal ")" (visual-overlay-close))))
+
+(defun visual-at-start ()
+  (if (eq (point) (overlay-start visual--overlay)) t nil))
+
+(defun visual-at-end ()
+  (if (eq (point) (overlay-end visual--overlay)) t nil))
+
+(defun visual-at-overlay ()
+  (if (and (evil-lisp-state-p)
+           (<= (overlay-start visual--overlay) (point))
+           (<= (point) (overlay-end visual--overlay)))))
+
 (defmacro make-sp-visual (name func back shift)
   `(defun ,name ()
      (interactive)
@@ -166,6 +181,14 @@
   (interactive)
   (goto-char (overlay-start visual--overlay))
   (set-mark (overlay-end visual--overlay)))
+
+(defun visual-goto-start ()
+  (when (visual-at-overlay)
+    (goto-char (overlay-start visual--overlay))))
+
+(defun visual-goto-end ()
+  (when (visual-at-overlay)
+    (goto-char (overlay-end visual--overlay))))
 
 (defun visual-exchange-end-and-beg ()
   (interactive)
