@@ -257,6 +257,35 @@
       (insert text)
       (move-overlay visual--overlay start (point)))))
 
+(defun visual-slurp (&optional back)
+  (interactive)
+  (if (not (visual-at-sexp))
+      (progn (visual-up)
+             (visual-slurp back))
+    (save-excursion
+      (if back
+          (visual-goto-start)
+        (visual-goto-end))
+      (let* ((food (sp-get-thing back))
+             (start (plist-get food :beg))
+             (end (plist-get food :end)))
+        (when food
+          (goto-char (if back start end))
+          (insert    (if back "(" ")"))
+          (goto-char (if back (overlay-start visual--overlay) (overlay-end visual--overlay)))
+          (delete-char (if back 1 -1))
+          (if back
+              (move-overlay visual--overlay start (overlay-end visual--overlay))
+            (move-overlay visual--overlay (overlay-start visual--overlay) end))))
+      (indent-region (overlay-start visual--overlay) (overlay-end visual--overlay)))
+    (if back
+        (visual-goto-start)
+      (visual-goto-end))))
+
+(defun visual-slurp-backward ()
+  (interactive)
+  (visual-slurp t))
+
 (defmacro visual-lisp-state-enter-command (command)
   "Wrap COMMAND to call evil-lisp-state before executing COMMAND."
   (let ((funcname (if (string-match "lisp-state-"
@@ -284,7 +313,9 @@
          ("L" . visual-forward-shift-sexp)
          ("v" . visual-select-overlay)
          ("r" . visual-raise)
-         ("o" . visual-exchange-start-and-end))))
+         ("o" . visual-exchange-start-and-end)
+         ("s" . visual-slurp)
+         ("S" . visual-slurp-backward))))
   (dolist (x bindings)
     (let ((key (car x))
           (cmd (cdr x)))
