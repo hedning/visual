@@ -140,9 +140,9 @@
   (if (eq (point) (overlay-end visual--overlay)) t nil))
 
 (defun visual-at-overlay ()
-  (if (and (evil-lisp-state-p)
-           (<= (overlay-start visual--overlay) (point))
-           (<= (point) (overlay-end visual--overlay)))))
+  (and (evil-lisp-state-p)
+       (<= (overlay-start visual--overlay) (point))
+       (<= (point) (overlay-end visual--overlay))))
 
 (defmacro make-sp-visual (name func back shift)
   `(defun ,name ()
