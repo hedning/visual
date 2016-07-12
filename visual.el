@@ -190,7 +190,7 @@
   (when (visual-at-overlay)
     (goto-char (overlay-end visual--overlay))))
 
-(defun visual-exchange-end-and-beg ()
+(defun visual-exchange-start-and-end ()
   "Toggle point between stard and end of the current thing"
   (interactive)
   (when (visual-at-overlay)
@@ -284,7 +284,7 @@
          ("L" . visual-forward-shift-sexp)
          ("v" . visual-select-overlay)
          ("r" . visual-raise)
-         ("o" . visual-exchange-end-and-beg))))
+         ("o" . visual-exchange-start-and-end))))
   (dolist (x bindings)
     (let ((key (car x))
           (cmd (cdr x)))
