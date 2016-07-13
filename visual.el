@@ -144,6 +144,16 @@
        (<= (overlay-start visual--overlay) (point))
        (<= (point) (overlay-end visual--overlay))))
 
+(defun visual-disjoint (overlay start end)
+  "Is the region bound by start and end disjoint with visual--overlay"
+  (unless (<= start end)
+    (setq start end
+          end start))
+  (let ((o-start (overlay-start visual--overlay))
+        (o-end (overlay-end visual--overlay)))
+    (or (<= end o-start)
+        (<= o-end start))))
+
 (defmacro make-sp-visual (name func back shift)
   `(defun ,name ()
      (interactive)
@@ -183,12 +193,10 @@
   (set-mark (overlay-end visual--overlay)))
 
 (defun visual-goto-start ()
-  (when (visual-at-overlay)
-    (goto-char (overlay-start visual--overlay))))
+  (goto-char (overlay-start visual--overlay)))
 
 (defun visual-goto-end ()
-  (when (visual-at-overlay)
-    (goto-char (overlay-end visual--overlay))))
+  (goto-char (overlay-end visual--overlay)))
 
 (defun visual-exchange-start-and-end ()
   "Toggle point between stard and end of the current thing"
@@ -286,6 +294,43 @@
   (interactive)
   (visual-slurp t))
 
+(defun visual-barf (&optional back)
+  (interactive)
+  (unless (visual-at-sexp)
+    (visual-up))
+  (when (visual-at-sexp)
+    (save-excursion
+      (if back
+          (progn (visual-goto-start)
+                 (forward-char))
+        (visual-goto-end)
+        (backward-char))
+      (let* ((food (sp-get-thing (not back)))
+             (start (plist-get food :beg))
+             (end (plist-get food :end))
+             new-edge)
+        (when (and food (not (visual-is-empty-sexp)))
+          (goto-char (if back end start))
+          (if back
+              (skip-syntax-forward " >")
+            (skip-syntax-backward " >"))
+          (insert (if back "(" ")"))
+          (setq new-edge (point-marker))
+          (goto-char (if back (overlay-start visual--overlay) (overlay-end visual--overlay)))
+          (delete-char (if back 1 -1))
+          (if back
+              (move-overlay visual--overlay (1- new-edge) (overlay-end visual--overlay))
+            (move-overlay visual--overlay (overlay-start visual--overlay) new-edge))
+          (indent-region (min start (overlay-start visual--overlay))
+                         (max end (overlay-end visual--overlay)))))))
+  (if back
+      (visual-goto-start)
+    (visual-goto-end)))
+
+(defun visual-barf-backward ()
+  (interactive)
+  (visual-barf t))
+
 (defmacro visual-lisp-state-enter-command (command)
   "Wrap COMMAND to call evil-lisp-state before executing COMMAND."
   (let ((funcname (if (string-match "lisp-state-"
@@ -315,7 +360,9 @@
          ("r" . visual-raise)
          ("o" . visual-exchange-start-and-end)
          ("s" . visual-slurp)
-         ("S" . visual-slurp-backward))))
+         ("S" . visual-slurp-backward)
+         ("b" . visual-barf)
+         ("B" . visual-barf-backward))))
   (dolist (x bindings)
     (let ((key (car x))
           (cmd (cdr x)))
